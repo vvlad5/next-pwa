@@ -3,7 +3,7 @@ import { Workbox } from 'workbox-window'
 if (typeof window !== 'undefined' && 'serviceWorker' in navigator && typeof caches !== 'undefined') {
   window.workbox = new Workbox(window.location.origin + __PWA_SW__, { scope: __PWA_SCOPE__ })
 
-  window.workbox.addEventListener('activate', () => {
+  window.workbox.addEventListener('activated', () => {
     caches.delete('next-data')
       .then(() => console.log('\'next-data\' cache successfully deleted'))
       .catch(() => console.log('error deleting \'next-data\' cache'))

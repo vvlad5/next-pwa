@@ -34,6 +34,9 @@ module.exports =
           register = true,
           dest = distDir,
           sw = 'sw.js',
+          cacheStartUrl = true,
+          dynamicStartUrl = true,
+          dynamicStartUrlRedirect,
           skipWaiting = true,
           clientsClaim = true,
           cleanupOutdatedCaches = true,
@@ -45,6 +48,7 @@ module.exports =
           modifyURLPrefix = {},
           manifestTransforms = [],
           fallbacks = {},
+          cacheOnFrontEndNav = false,
           reloadOnOnline = true,
           scope = basePath,
           customWorkerDir = 'worker',
@@ -79,6 +83,8 @@ module.exports =
             __PWA_SW__: `'${_sw}'`,
             __PWA_SCOPE__: `'${_scope}'`,
             __PWA_ENABLE_REGISTER__: `${Boolean(register)}`,
+            __PWA_START_URL__: dynamicStartUrl ? `'${basePath}'` : undefined,
+            __PWA_CACHE_ON_FRONT_END_NAV__: `${Boolean(cacheOnFrontEndNav)}`,
             __PWA_RELOAD_ON_ONLINE__: `${Boolean(reloadOnOnline)}`
           })
         )
@@ -158,6 +164,20 @@ module.exports =
                 url: path.posix.join(basePath, `/${f}`),
                 revision: getRevision(`public/${f}`)
               }))
+          }
+
+          if (cacheStartUrl) {
+            if (!dynamicStartUrl) {
+              manifestEntries.push({
+                url: basePath,
+                revision: buildId
+              })
+            } else if (typeof dynamicStartUrlRedirect === 'string' && dynamicStartUrlRedirect.length > 0) {
+              manifestEntries.push({
+                url: dynamicStartUrlRedirect,
+                revision: buildId
+              })
+            }
           }
 
           let _fallbacks = fallbacks
@@ -265,6 +285,30 @@ module.exports =
                   }
                 }
               ]
+            }
+
+            if (dynamicStartUrl) {
+              runtimeCaching.unshift({
+                urlPattern: basePath,
+                handler: 'NetworkFirst',
+                options: {
+                  cacheName: 'start-url',
+                  plugins: [
+                    {
+                      cacheWillUpdate: async ({ request, response, event, state }) => {
+                        if (response && response.type === 'opaqueredirect') {
+                          return new Response(response.body, {
+                            status: 200,
+                            statusText: 'OK',
+                            headers: response.headers
+                          })
+                        }
+                        return response
+                      }
+                    }
+                  ]
+                }
+              })
             }
 
             if (_fallbacks) {
